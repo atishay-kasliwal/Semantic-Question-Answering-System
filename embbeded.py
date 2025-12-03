@@ -65,6 +65,7 @@ def ensure_collection(client: weaviate.Client) -> None:
 
 def load_pdf_chunks(
     path: str,
+    title: str,
     max_chars: int = 600,
     overlap: int = 100,
 ) -> List[Dict[str, str]]:
@@ -112,7 +113,7 @@ def load_pdf_chunks(
 
             chunks.append(
                 {
-                    "title": "The Bhagavad Gita",
+                    "title": title,
                     "chunk": chunk_text,
                     "page": page_index + 1,
                 }
@@ -128,26 +129,40 @@ def load_pdf_chunks(
     return chunks
 
 
-def populate_pdf(client: weaviate.Client) -> None:
+def populate_all_pdfs(client: weaviate.Client, root_dir: str = "Files") -> None:
     """
-    Load chunks from the Bhagavad Gita PDF and store them in Weaviate with
-    embeddings from Ollama (`embeddinggemma`).
+    Load chunks from all PDFs in the given directory and store them in Weaviate
+    with embeddings from Ollama (`embeddinggemma`).
     """
-    print(f"Loading PDF from: {PDF_PATH}")
-    chunks = load_pdf_chunks(PDF_PATH)
-    print(f"Total chunks to ingest: {len(chunks)}")
+    pdf_paths: List[str] = []
+    for name in os.listdir(root_dir):
+        if not name.lower().endswith(".pdf"):
+            continue
+        pdf_paths.append(os.path.join(root_dir, name))
 
-    for i, obj in enumerate(chunks, start=1):
-        vector = get_ollama_embedding(obj["chunk"])
+    pdf_paths.sort()
 
-        client.data_object.create(
-            data_object=obj,
-            class_name=COLLECTION_NAME,
-            vector=vector,
-        )
+    total_chunks = 0
+    for path in pdf_paths:
+        title = os.path.splitext(os.path.basename(path))[0]
+        print(f"Loading PDF from: {path}")
+        chunks = load_pdf_chunks(path, title=title)
+        print(f"  Chunks to ingest from \"{title}\": {len(chunks)}")
 
-        if i % 50 == 0:
-            print(f"Ingested {i} chunks...")
+        for i, obj in enumerate(chunks, start=1):
+            vector = get_ollama_embedding(obj["chunk"])
+
+            client.data_object.create(
+                data_object=obj,
+                class_name=COLLECTION_NAME,
+                vector=vector,
+            )
+
+            total_chunks += 1
+            if total_chunks % 50 == 0:
+                print(f"Ingested {total_chunks} chunks so far...")
+
+    print(f"Finished ingesting all PDFs. Total chunks ingested: {total_chunks}")
 
 
 def run_vector_search(client: weaviate.Client) -> None:
@@ -177,12 +192,12 @@ def main() -> None:
     End-to-end local flow:
       1. Connect to local Weaviate
       2. Ensure BhagavadGitaChunks collection exists (no built-in vectorizer)
-      3. Populate it with PDF chunks + Ollama (`embeddinggemma`) vectors
-      4. Run a vector search using an Ollama-embedded query
+      3. Populate it with chunks from all PDFs in `Files/` using Ollama (`embeddinggemma`) vectors
+      4. Run a vector search using an Ollama-embedded query (Bhagavad Gita example)
     """
     client = connect_weaviate()
     ensure_collection(client)
-    populate_pdf(client)
+    populate_all_pdfs(client)
     run_vector_search(client)
 
 

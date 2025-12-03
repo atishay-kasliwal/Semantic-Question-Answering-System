@@ -14,7 +14,7 @@ class Pipeline:
         GENERATE_MODEL: str
 
     def __init__(self):
-        self.name = "Bhagavad Gita RAG"
+        self.name = "RAG"
 
         self.valves = self.Valves(
             OLLAMA_URL=os.getenv("OLLAMA_URL", "http://localhost:11434"),

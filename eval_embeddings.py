@@ -13,6 +13,14 @@ import embbeded  # reuse PDF chunking and Ollama embedding
 # Load environment variables from a local .env file, if present
 load_dotenv()
 
+# Optional: inline override for your OpenAI key.
+# Set this to your real key locally if you prefer not to use .env.
+# WARNING: Keep this empty in committed code; do NOT push real keys to git.
+INLINE_OPENAI_API_KEY = ""  # e.g. "sk-..."
+
+if INLINE_OPENAI_API_KEY:
+    os.environ["OPENAI_API_KEY"] = INLINE_OPENAI_API_KEY
+
 # Optional: set your OpenAI key in a local .env file instead of hard-coding it here.
 # Example .env entry (do NOT commit your real key to git):
 # OPENAI_API_KEY=sk-...
@@ -100,7 +108,8 @@ def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 
 
 def _load_chunks(sample_limit: int = 400) -> List[Dict[str, str]]:
-    chunks = embbeded.load_pdf_chunks(embbeded.PDF_PATH)
+    # For eval we focus on the Bhagavad Gita PDF.
+    chunks = embbeded.load_pdf_chunks(embbeded.PDF_PATH, title="The Bhagavad Gita")
     if sample_limit and len(chunks) > sample_limit:
         return chunks[:sample_limit]
     return chunks
